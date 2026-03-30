@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Drone Detection System{% endblock %}</title>
+  
+  <!-- Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Custom Styling -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <!-- NAVIGATION BAR -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="/" class="brand">
+        <span class="logo-icon">🚁</span>
+        <span class="brand-name">Drone<span class="highlight">Scan</span></span>
+      </a>
+      
+      <nav class="nav-links">
+        <a href="/" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
+        <a href="/live_page" class="{% if request.path == '/live_page' %}active{% endif %}">Live Feed</a>
+        <a href="/history" class="{% if request.path == '/history' %}active{% endif %}">History</a>
+      </nav>
+      
+      <div class="status-indicator">
+        <span class="dot"></span>
+        <span class="status-text">System Active</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENT WRAPPER -->
+  <main class="content-wrapper">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- GPS DISPLAY (Global if needed) -->
+  <div id="gpsStatus" class="gps-badge">
+    <span class="gps-icon">📍</span>
+    <span id="gpsLocationText">Acquiring Location...</span>
+  </div>
+
+  <!-- POPUP (Global for alerts) -->
+  <div id="globalPopup" class="popup-overlay">
+    <div class="popup-box">
+      <h2 id="global-popup-title"></h2>
+      <p id="global-popup-message"></p>
+      <button onclick="closeGlobalPopup()">Acknowledge</button>
+    </div>
+  </div>
+
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <script>
+    function showGlobalPopup(title, message) {
+      document.getElementById("global-popup-title").innerText = title;
+      document.getElementById("global-popup-message").innerText = message;
+      document.getElementById("globalPopup").style.display = "flex";
+    }
+
+    function closeGlobalPopup() {
+      document.getElementById("globalPopup").style.display = "none";
+    }
+
+    // Shared GPS logic
+    function updateGlobalGPS() {
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+          function (pos) {
+            const lat = pos.coords.latitude.toFixed(6);
+            const lon = pos.coords.longitude.toFixed(6);
+            
+            fetch("/update_location", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ latitude: lat, longitude: lon }),
+            })
+            .then(res => res.json())
+            .then(data => {
+              document.getElementById("gpsLocationText").innerText = data.location;
+            })
+            .catch(err => {
+              document.getElementById("gpsLocationText").innerText = `${lat}, ${lon}`;
+            });
+          },
+          function (err) {
+            document.getElementById("gpsLocationText").innerText = "GPS Error: " + err.message;
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      }
+    }
+
+    window.addEventListener("load", updateGlobalGPS);
+  </script>
+  
+  {% block scripts %}{% endblock %}
+</body>
+</html>

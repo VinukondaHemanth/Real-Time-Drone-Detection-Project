@@ -1,0 +1,19 @@
+Command: pip install 'Libraries_name'
+OR
+pip install -r requirement.txt
+
+Libraries Names:
+flask
+ultralytics
+opencv-python
+pillow
+numpy
+requests
+werkzeug
+pyngrok
+pymongo
+
+Run in one laptop access project through this link:
+ uncurbed-roxane-thermoscopical.ngrok-free.dev
+
+project run command: python app.py

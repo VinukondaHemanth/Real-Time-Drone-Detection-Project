@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum-X Advanced Drone</title>
+    <style>
+        /* --- UI & HUD DESIGN --- */
+        body { 
+            margin: 0; 
+            background: transparent;
+            overflow: hidden; 
+            font-family: 'Orbitron', monospace; 
+            cursor: none;
+        }
+        
+        #hud {
+            position: absolute; 
+            width: 100%; 
+            height: 100%; 
+            pointer-events: none;
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            padding: 30px; 
+            box-sizing: border-box;
+            z-index: 100;
+        }
+
+        .hud-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-start;
+        }
+        
+        .hud-footer { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-end; 
+        }
+        
+        .hud-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        .drone-title {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00f7ff, #0080ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 247, 255, 0.5);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            color: #00aaff;
+            font-size: 12px;
+            letter-spacing: 2px;
+            opacity: 0.8;
+        }
+        
+        .hud-panel {
+            background: rgba(0, 20, 40, 0.7);
+            border: 1px solid rgba(0, 150, 255, 0.3);
+            border-radius: 8px;
+            padding: 15px 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.2);
+            min-width: 180px;
+        }
+        
+        .panel-title {
+            color: #00aaff;
+            font-size: 11px;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            opacity: 0.9;
+        }
+        
+        .stat {
+            color: #00f7ff;
+            font-size: 14px;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .stat-value {
+            font-weight: 700;
+        }
+        
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            opacity: 0.8;
+        }
+        
+        .crosshair-inner {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid rgba(0, 247, 255, 0.6);
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(0, 247, 255, 0.3);
+        }
+        
+        .crosshair-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            background: #00f7ff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px #00f7ff;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00aaff;
+            font-size: 12px;
+            text-align: center;
+            letter-spacing: 1px;
+            background: rgba(0, 20, 40, 0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 150, 255, 0.3);
+            backdrop-filter: blur(5px);
+            animation: fadeInOut 4s infinite;
+        }
+        
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .drone-cursor {
+            position: fixed;
+            width: 24px;
+            height: 24px;
+            border: 2px solid #00f7ff;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1000;
+            mix-blend-mode: screen;
+            box-shadow: 0 0 15px #00f7ff;
+        }
+        
+        .cursor-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: #00f7ff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        /* Loading screen */
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 1s;
+        }
+        
+        .loading-text {
+            color: #00f7ff;
+            font-size: 18px;
+            margin-top: 20px;
+            letter-spacing: 3px;
+        }
+        
+        .loading-bar {
+            width: 300px;
+            height: 2px;
+            background: rgba(0, 150, 255, 0.2);
+            margin-top: 20px;
+            overflow: hidden;
+            border-radius: 1px;
+        }
+        
+        .loading-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00f7ff, #0080ff);
+            width: 0%;
+            transition: width 0.3s;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="loading">
+        <div class="drone-title">QUANTUM-X</div>
+        <div class="loading-text">INITIALIZING DRONE SYSTEMS</div>
+        <div class="loading-bar"><div class="loading-progress"></div></div>
+    </div>
+
+    <div id="hud">
+        <div class="hud-header">
+            <div>
+                <div class="drone-title">QUANTUM-X</div>
+                <div class="subtitle">NEURAL FLIGHT CONTROL v3.2</div>
+            </div>
+            <div class="hud-panel">
+                <div class="panel-title">SYSTEM STATUS</div>
+                <div class="stat">BATTERY: <span class="stat-value" id="battery">100%</span></div>
+                <div class="stat">MODE: <span class="stat-value" id="mode">AUTO-TRACK</span></div>
+                <div class="stat">THRUST: <span class="stat-value" id="thrust">0%</span></div>
+            </div>
+        </div>
+        
+        <div class="crosshair">
+            <div class="crosshair-inner"></div>
+            <div class="crosshair-dot"></div>
+        </div>
+        
+        <div class="hud-footer">
+            <div class="hud-panel">
+                <div class="panel-title">FLIGHT DATA</div>
+                <div class="stat">ALTITUDE: <span class="stat-value" id="altitude">0.0m</span></div>
+                <div class="stat">SPEED: <span class="stat-value" id="speed">0.0m/s</span></div>
+                <div class="stat">SIGNAL: <span class="stat-value" id="signal">100%</span></div>
+            </div>
+            
+            <div class="hud-panel">
+                <div class="panel-title">CONTROLS</div>
+                <div class="stat">MOVE MOUSE: <span class="stat-value">DRONE STEERING</span></div>
+                <div class="stat">SCROLL WHEEL: <span class="stat-value">ALTITUDE</span></div>
+                <div class="stat">LEFT CLICK: <span class="stat-value">BOOST</span></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="instructions">MOVE MOUSE TO CONTROL • SCROLL FOR ALTITUDE • CLICK TO ENGAGE BOOST</div>
+    
+    <!-- Custom Cursor -->
+    <div class="drone-cursor">
+        <div class="cursor-dot"></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
+
+        // --- 1. LOADING SCREEN ---
+        const loadingScreen = document.getElementById('loading');
+        const loadingProgress = document.querySelector('.loading-progress');
+        let assetsLoaded = 0;
+        const totalAssets = 5;
+
+        function updateLoading(progress) {
+            loadingProgress.style.width = progress + '%';
+            if (progress >= 100) {
+                setTimeout(() => {
+                    loadingScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                    }, 1000);
+                }, 500);
+            }
+        }
+
+        // Simulate loading
+        const loadInterval = setInterval(() => {
+            assetsLoaded += Math.random() * 30;
+            if (assetsLoaded >= totalAssets) {
+                assetsLoaded = totalAssets;
+                clearInterval(loadInterval);
+            }
+            updateLoading((assetsLoaded / totalAssets) * 100);
+        }, 200);
+
+        // --- 2. SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = null; // Transparent background
+        scene.fog = null; // No fog
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 2, 8);
+
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: true, 
+            alpha: true, // Enable transparency
+            powerPreference: "high-performance"
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = false; // Disable shadows for cleaner look
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        renderer.setClearColor(0x000000, 0); // Clear to transparent
+        document.body.appendChild(renderer.domElement);
+
+        // Post-processing for glow effects
+        const composer = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+
+        const bloomPass = new UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            1.8, 0.5, 0.9
+        );
+        composer.addPass(bloomPass);
+
+        const filmPass = new FilmPass(0.15, 0.025, 648, false);
+        composer.addPass(filmPass);
+
+        // --- 3. SIMPLE TRANSPARENT BACKGROUND ---
+        // No grid, no ground, just the drone floating in empty space
+        const ambientLight = new THREE.AmbientLight(0x003366, 0.5);
+        scene.add(ambientLight);
+
+        // Add some subtle directional light for better definition
+        const directionalLight = new THREE.DirectionalLight(0x00aaff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        // Add a faint fill light from the opposite side
+        const fillLight = new THREE.DirectionalLight(0xff00ff, 0.4);
+        fillLight.position.set(-5, 3, -5);
+        scene.add(fillLight);
+
+        // --- 4. ADVANCED DRONE DESIGN ---
+        const drone = new THREE.Group();
+
+        // Materials
+        const matCarbonFiber = new THREE.MeshStandardMaterial({
+            color: 0x111111,
+            roughness: 0.1,
+            metalness: 0.9,
+            emissive: 0x001122,
+            emissiveIntensity: 0.1
+        });
+
+        const matTitanium = new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            roughness: 0.2,
+            metalness: 0.95,
+            envMapIntensity: 1
+        });
+
+        const matGlass = new THREE.MeshPhysicalMaterial({
+            color: 0x00ffff,
+            transmission: 0.95,
+            roughness: 0,
+            thickness: 0.5,
+            ior: 1.5,
+            specularIntensity: 1,
+            transparent: true,
+            opacity: 0.3
+        });
+
+        const matGlowBlue = new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        const matGlowPink = new THREE.MeshBasicMaterial({
+            color: 0xff00ff,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        // Main fuselage (aerodynamic teardrop shape)
+        const fuselageGeometry = new THREE.ConeGeometry(0.8, 2, 8);
+        fuselageGeometry.rotateX(Math.PI / 2);
+        const fuselage = new THREE.Mesh(fuselageGeometry, matCarbonFiber);
+        drone.add(fuselage);
+
+        // Central core (spherical center)
+        const coreGeometry = new THREE.SphereGeometry(0.6, 32, 32);
+        const core = new THREE.Mesh(coreGeometry, matTitanium);
+        core.position.z = -0.3;
+        drone.add(core);
+
+        // Glass dome on top
+        const domeGeometry = new THREE.SphereGeometry(0.5, 32, 16, 0, Math.PI * 2, 0, Math.PI/2);
+        const dome = new THREE.Mesh(domeGeometry, matGlass);
+        dome.position.set(0, 0.3, 0);
+        drone.add(dome);
+
+        // Rotating rings around core
+        const createRing = (radius, thickness, colorMat) => {
+            const ringGeometry = new THREE.TorusGeometry(radius, thickness, 16, 32);
+            const ring = new THREE.Mesh(ringGeometry, colorMat);
+            ring.rotation.x = Math.PI / 2;
+            drone.add(ring);
+            return ring;
+        };
+
+        const innerRing = createRing(0.8, 0.05, matGlowBlue);
+        const outerRing = createRing(1.2, 0.04, matGlowPink);
+
+        // Articulated arms with mechanical joints
+        const armGroup = new THREE.Group();
+        const armPositions = [
+            { x: 1.5, z: 1.5, angle: Math.PI/4, color: matGlowBlue },
+            { x: -1.5, z: 1.5, angle: -Math.PI/4, color: matGlowBlue },
+            { x: 1.5, z: -1.5, angle: 3*Math.PI/4, color: matGlowPink },
+            { x: -1.5, z: -1.5, angle: -3*Math.PI/4, color: matGlowPink }
+        ];
+
+        const rotors = [];
+        const armJoints = [];
+
+        armPositions.forEach((pos, i) => {
+            // Upper arm segment
+            const upperArm = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.06, 1.5),
+                matTitanium
+            );
+            upperArm.rotation.z = Math.PI/2;
+            upperArm.position.set(pos.x * 0.5, 0, pos.z * 0.5);
+            armGroup.add(upperArm);
+
+            // Joint
+            const joint = new THREE.Mesh(
+                new THREE.SphereGeometry(0.12),
+                matCarbonFiber
+            );
+            joint.position.set(pos.x * 0.75, 0, pos.z * 0.75);
+            armGroup.add(joint);
+            armJoints.push(joint);
+
+            // Lower arm segment (articulated)
+            const lowerArm = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.08, 1.5),
+                matTitanium
+            );
+            lowerArm.rotation.z = Math.PI/2;
+            lowerArm.position.set(pos.x * 1.25, 0, pos.z * 1.25);
+            armGroup.add(lowerArm);
+
+            // Advanced rotor assembly
+            const rotorAssembly = new THREE.Group();
+            rotorAssembly.position.set(pos.x * 2, 0, pos.z * 2);
+
+            // Motor housing with cooling fins
+            const motorHousing = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.25, 0.2, 0.3, 16),
+                matTitanium
+            );
+            rotorAssembly.add(motorHousing);
+
+            // Cooling fins
+            const finCount = 8;
+            for (let f = 0; f < finCount; f++) {
+                const fin = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.05, 0.4, 0.2),
+                    matCarbonFiber
+                );
+                fin.position.y = 0.2;
+                fin.rotation.y = (f / finCount) * Math.PI * 2;
+                motorHousing.add(fin);
+            }
+
+            // LED ring around motor
+            const ledRing = new THREE.Mesh(
+                new THREE.TorusGeometry(0.3, 0.02, 16, 32),
+                pos.color
+            );
+            ledRing.rotation.x = Math.PI/2;
+            rotorAssembly.add(ledRing);
+
+            // Advanced propeller system
+            const propellerGroup = new THREE.Group();
+            
+            // Hub
+            const hub = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.15, 0.15, 0.05),
+                matCarbonFiber
+            );
+            propellerGroup.add(hub);
+
+            // Aerodynamic blades (3 per rotor)
+            for (let b = 0; b < 3; b++) {
+                const blade = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.2, 0.02, 0.2),
+                    matCarbonFiber
+                );
+                blade.position.x = 0.6;
+                blade.rotation.y = (b / 3) * Math.PI * 2;
+                propellerGroup.add(blade);
+            }
+
+            propellerGroup.position.y = 0.25;
+            rotorAssembly.add(propellerGroup);
+            rotors.push(propellerGroup);
+
+            armGroup.add(rotorAssembly);
+        });
+
+        drone.add(armGroup);
+
+        // Advanced camera array with gimbal system
+        const cameraArray = new THREE.Group();
+        cameraArray.position.set(0, 0, 1);
+
+        // Main sensor array
+        const sensorArray = new THREE.Mesh(
+            new THREE.BoxGeometry(0.8, 0.3, 0.4),
+            matCarbonFiber
+        );
+        cameraArray.add(sensorArray);
+
+        // Multiple lenses
+        const lensPositions = [
+            { x: -0.25, y: 0, size: 0.15 },
+            { x: 0, y: 0.1, size: 0.1 },
+            { x: 0.25, y: 0, size: 0.15 }
+        ];
+
+        lensPositions.forEach(pos => {
+            const lens = new THREE.Mesh(
+                new THREE.CylinderGeometry(pos.size, pos.size, 0.1, 32),
+                matGlass
+            );
+            lens.position.set(pos.x, pos.y, 0.21);
+            lens.rotation.x = Math.PI/2;
+            sensorArray.add(lens);
+        });
+
+        drone.add(cameraArray);
+
+        // Thrust vectoring nozzles
+        for (let i = 0; i < 4; i++) {
+            const nozzle = new THREE.Mesh(
+                new THREE.ConeGeometry(0.15, 0.4, 16),
+                matTitanium
+            );
+            nozzle.rotation.x = Math.PI;
+            nozzle.position.set(
+                (i % 2 === 0 ? 0.4 : -0.4),
+                -0.3,
+                (i < 2 ? -0.8 : 0.2)
+            );
+            drone.add(nozzle);
+        }
+
+        // Landing gear (retractable)
+        const landingGear = new THREE.Group();
+        const gearPositions = [
+            { x: 0.8, z: 0.5 },
+            { x: -0.8, z: 0.5 },
+            { x: 0.8, z: -0.8 },
+            { x: -0.8, z: -0.8 }
+        ];
+
+        gearPositions.forEach(pos => {
+            const leg = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.02, 0.8),
+                matTitanium
+            );
+            leg.position.set(pos.x, -0.4, pos.z);
+            landingGear.add(leg);
+
+            const foot = new THREE.Mesh(
+                new THREE.SphereGeometry(0.05),
+                matCarbonFiber
+            );
+            foot.position.y = -0.4;
+            leg.add(foot);
+        });
+
+        drone.add(landingGear);
+        scene.add(drone);
+
+        // Add drone spotlights for better visibility
+        const droneSpotlight = new THREE.SpotLight(0x00ffff, 3, 50, Math.PI/6, 0.5, 2);
+        droneSpotlight.position.set(0, 0, 1);
+        drone.add(droneSpotlight);
+
+        const droneSpotlight2 = new THREE.SpotLight(0xff00ff, 2, 40, Math.PI/8, 0.5, 2);
+        droneSpotlight2.position.set(0, 0.5, -1);
+        drone.add(droneSpotlight2);
+
+        // Particle system for thruster effects
+        const particleCount = 100;
+        const particles = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        const particleVelocities = [];
+
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            particlePositions[i3] = 0;
+            particlePositions[i3 + 1] = 0;
+            particlePositions[i3 + 2] = 0;
+            particleVelocities.push(new THREE.Vector3(
+                (Math.random() - 0.5) * 0.2,
+                -Math.random() * 2,
+                (Math.random() - 0.5) * 0.2
+            ));
+        }
+
+        particles.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0x00ffff,
+            size: 0.1,
+            transparent: true,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        drone.add(particleSystem);
+
+        // --- 5. INPUT SYSTEM ---
+        const mouse = new THREE.Vector2();
+        const targetRotation = new THREE.Vector2();
+        const droneVelocity = new THREE.Vector3();
+        let altitude = 2;
+        let thrust = 0;
+        let boostActive = false;
+        let boostCharge = 100;
+        const customCursor = document.querySelector('.drone-cursor');
+
+        document.addEventListener('mousemove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            targetRotation.x = mouse.y * 0.5;
+            targetRotation.y = mouse.x * 0.5;
+            
+            customCursor.style.left = event.clientX + 'px';
+            customCursor.style.top = event.clientY + 'px';
+        });
+
+        document.addEventListener('wheel', (event) => {
+            altitude += event.deltaY * -0.005;
+            altitude = THREE.MathUtils.clamp(altitude, 0.5, 20);
+        });
+
+        document.addEventListener('click', () => {
+            if (boostCharge >= 20) {
+                boostActive = true;
+                boostCharge -= 20;
+                setTimeout(() => boostActive = false, 1000);
+            }
+        });
+
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // --- 6. ANIMATION LOOP ---
+        const clock = new THREE.Clock();
+        let time = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            time += delta;
+
+            // Update loading if not complete
+            if (assetsLoaded < totalAssets) {
+                assetsLoaded += delta * 5;
+                updateLoading((assetsLoaded / totalAssets) * 100);
+            }
+
+            // Drone animations
+            const lerpFactor = 0.1;
+            
+            // Smooth rotation
+            drone.rotation.x += (targetRotation.x - drone.rotation.x) * lerpFactor;
+            drone.rotation.y += (targetRotation.y - drone.rotation.y) * lerpFactor;
+            
+            // Rotating rings
+            innerRing.rotation.z += delta * 0.5;
+            outerRing.rotation.z -= delta * 0.3;
+            
+            // Articulated arm movement
+            armJoints.forEach((joint, i) => {
+                joint.rotation.z = Math.sin(time * 2 + i) * 0.2;
+            });
+            
+            // Propeller rotation
+            rotors.forEach((rotor, i) => {
+                rotor.rotation.y += (boostActive ? 2 : 1) * (delta * 20);
+                rotor.position.y = Math.sin(time * 5 + i) * 0.05;
+            });
+            
+            // Camera array movement
+            cameraArray.rotation.x = Math.sin(time * 3) * 0.1;
+            cameraArray.rotation.y = Math.cos(time * 2) * 0.1;
+            
+            // Landing gear retraction based on altitude
+            const gearHeight = THREE.MathUtils.clamp((altitude - 1) * 0.5, 0, 0.4);
+            landingGear.position.y = -gearHeight;
+            
+            // Drone bobbing motion
+            drone.position.y = altitude + Math.sin(time * 2) * 0.05;
+            
+            // Thrust vector movement
+            thrust = boostActive ? 100 : Math.abs(mouse.y) * 50 + 20;
+            droneVelocity.x = mouse.x * (boostActive ? 3 : 1);
+            droneVelocity.z = mouse.y * (boostActive ? 3 : 1);
+            
+            drone.position.x += droneVelocity.x * delta;
+            drone.position.z += droneVelocity.z * delta;
+            
+            // Particle system for thrusters
+            const positions = particleSystem.geometry.attributes.position.array;
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                
+                // Reset particles that fall too low
+                if (positions[i3 + 1] < -2 || Math.random() < 0.02) {
+                    positions[i3] = (Math.random() - 0.5) * 0.5;
+                    positions[i3 + 1] = -0.5;
+                    positions[i3 + 2] = (Math.random() - 0.5) * 0.5;
+                    particleVelocities[i].set(
+                        (Math.random() - 0.5) * 0.2,
+                        -Math.random() * (boostActive ? 4 : 2),
+                        (Math.random() - 0.5) * 0.2
+                    );
+                } else {
+                    positions[i3] += particleVelocities[i].x * delta;
+                    positions[i3 + 1] += particleVelocities[i].y * delta;
+                    positions[i3 + 2] += particleVelocities[i].z * delta;
+                    
+                    // Add some randomness
+                    particleVelocities[i].x += (Math.random() - 0.5) * 0.1;
+                    particleVelocities[i].z += (Math.random() - 0.5) * 0.1;
+                }
+            }
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+            
+            // Recharge boost
+            if (!boostActive && boostCharge < 100) {
+                boostCharge += delta * 10;
+            }
+            
+            // Camera follow with smooth movement
+            const cameraOffset = new THREE.Vector3(
+                mouse.x * 3,
+                3 + mouse.y * 1 + altitude * 0.3,
+                8 - Math.abs(mouse.y) * 2
+            );
+            
+            camera.position.lerp(cameraOffset, 0.05);
+            camera.lookAt(drone.position);
+            
+            // Update HUD
+            document.getElementById('altitude').textContent = altitude.toFixed(1) + 'm';
+            document.getElementById('speed').textContent = droneVelocity.length().toFixed(1) + 'm/s';
+            document.getElementById('thrust').textContent = Math.round(thrust) + '%';
+            document.getElementById('battery').textContent = Math.round(boostCharge) + '%';
+            document.getElementById('signal').textContent = Math.round(100 - Math.abs(mouse.x + mouse.y) * 25) + '%';
+            
+            if (boostActive) {
+                document.getElementById('mode').textContent = 'BOOST';
+                document.getElementById('mode').style.color = '#ff0066';
+            } else {
+                document.getElementById('mode').textContent = 'AUTO-TRACK';
+                document.getElementById('mode').style.color = '#00ff00';
+            }
+            
+            // Render with post-processing
+            composer.render();
+        }
+
+        // --- 7. WINDOW RESIZE ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- 8. START ANIMATION ---
+        animate();
+
+        // Hide instructions after 5 seconds
+        setTimeout(() => {
+            const instructions = document.getElementById('instructions');
+            instructions.style.transition = 'opacity 2s';
+            instructions.style.opacity = '0.2';
+        }, 5000);
+
+    </script>
+</body>
+</html>
